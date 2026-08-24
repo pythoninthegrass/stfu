@@ -4,7 +4,7 @@ All notable changes to S.TFU are documented here. The 1.0.0 entry is a
 summary of what the app does rather than a diff, since it was the first public
 release; everything after it is a real changelog.
 
-## [Unreleased]
+## [1.1.1] — 2026-08-24
 
 ### Fixed
 
