@@ -4,6 +4,23 @@ All notable changes to S.TFU are documented here. The 1.0.0 entry is a
 summary of what the app does rather than a diff, since it was the first public
 release; everything after it is a real changelog.
 
+## [Unreleased]
+
+### Fixed
+
+- **Recalibrating a running app was impossible.** Calibration asks you to yell
+  on cue, and detection was still live while it did — so that yell tripped the
+  ladder, dropped you to the desktop, and drew an overlay over the dialog you
+  were trying to use. It also meant two microphone streams open on one device,
+  which the app otherwise goes out of its way to avoid. Detection now stands
+  down for the duration of a calibration recording, from both the tray's
+  **Recalibrate** and the same button inside Settings.
+
+  Scoped to the recording rather than to the dialog being open, deliberately: a
+  dialog left sitting on screen must never leave the app deaf. Both ends are
+  written to the event log, so the report explains the gap instead of showing
+  one that reads like a dropped microphone.
+
 ## [1.1.0] — 2026-08-20
 
 ### Added

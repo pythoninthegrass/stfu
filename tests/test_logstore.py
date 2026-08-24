@@ -134,3 +134,11 @@ def test_for_session_matches_events_for_session(tmp_path):
 
     # The schedule record belongs to no session and must not leak into one.
     assert for_session(everything, None) == [everything[2]]
+
+
+def test_calibration_events_are_accepted(tmp_path):
+    store = LogStore(tmp_path / "events.jsonl")
+    store.append(type="calibration_started", session_id="s1")
+    store.append(type="calibration_finished", session_id="s1")
+    kinds = [event["type"] for event in store.read_all()]
+    assert kinds == ["calibration_started", "calibration_finished"]

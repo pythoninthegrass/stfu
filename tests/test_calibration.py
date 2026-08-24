@@ -71,3 +71,30 @@ def test_the_threshold_is_clamped_to_a_sane_range():
 def test_the_quiet_sample_is_reported_as_the_noise_floor():
     result = compute_thresholds(samples([-70.0] * 10, [-30.0] * 10, [-8.0] * 5))
     assert result.noise_floor_dbfs == pytest.approx(-70.0, abs=1.0)
+
+
+def test_the_dialog_carries_an_on_recording_callback():
+    """Constructing the dialog touches no Tk, so the wiring is checkable here.
+
+    The callback is what lets app.py stand the engine down for the duration of
+    a run; the recording itself needs a window and a microphone, so only the
+    plumbing is asserted.
+    """
+    from stfu.calibrationui import CalibrationDialog
+    from stfu.config import Config
+
+    seen = []
+
+    def note(recording):
+        seen.append(recording)
+
+    dialog = CalibrationDialog(Config(), on_recording=note)
+    assert dialog._on_recording is note
+
+    # And it is a plain callable the dialog invokes, nothing more.
+    dialog._on_recording(True)
+    dialog._on_recording(False)
+    assert seen == [True, False]
+
+    # Optional: the dialog is constructed without one in other places.
+    assert CalibrationDialog(Config())._on_recording is None

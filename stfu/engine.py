@@ -49,10 +49,15 @@ class Engine:
         self.paused = False
         self._logged_session: str | None = None
         self._scheduled_off = False
+        # A depth counter, not a flag. The calibration dialog's Start button is
+        # not disabled while a run is going, so two presses genuinely can put
+        # two recordings in flight -- and with a flag the first one to finish
+        # would hand the microphone back while the second was still recording.
+        self._calibrating = 0
 
     def handle_frame(self, rms: float, mono: float, wall: datetime) -> None:
         """Process one audio frame. The single entry point for detection."""
-        if self.paused:
+        if self.paused or self._calibrating:
             return
 
         if self._update_schedule(wall):
@@ -185,6 +190,47 @@ class Engine:
         # until they refill.
         self.detector.reset()
         self.logstore.append(type="app_resumed", session_id=self.strikes.session_id)
+
+    @property
+    def calibrating(self) -> bool:
+        """True while at least one calibration run is recording."""
+        return self._calibrating > 0
+
+    def begin_calibration(self) -> None:
+        """Stand down while a calibration run records.
+
+        Calibration asks the operator to yell on purpose. With detection live
+        that yell trips the ladder -- Win+D, a sound effect, and an overlay
+        drawn over the dialog itself -- which makes recalibrating a running app
+        impossible. It also means two MicSource streams on one device, which
+        CalibrationDialog.cancel()'s own docstring calls "exactly the conflict
+        this app has to avoid" while only guarding against a second *dialog*.
+
+        Scoped to the recording, deliberately, not to the dialog being open: a
+        dialog left sitting on screen must never leave the app deaf. Same rule
+        as everywhere else here -- nothing switches detection off except on
+        purpose, for a bounded reason.
+        """
+        self._calibrating += 1
+        if self._calibrating == 1:
+            self.logstore.append(
+                type="calibration_started", session_id=self.strikes.session_id
+            )
+
+    def end_calibration(self) -> None:
+        """Resume after a calibration run. Safe to call more times than begin."""
+        if self._calibrating == 0:
+            return
+        self._calibrating -= 1
+        if self._calibrating:
+            return
+        # Same reasoning as resume(): the rolling windows still hold frames
+        # from before the run, and calibration has just moved the threshold out
+        # from under them.
+        self.detector.reset()
+        self.logstore.append(
+            type="calibration_finished", session_id=self.strikes.session_id
+        )
 
     def on_mic_lost(self) -> None:
         self.detector.reset()

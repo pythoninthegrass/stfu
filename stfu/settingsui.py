@@ -41,9 +41,15 @@ class SettingsWindow:
         master: tk.Misc,
         config: Config,
         on_start_over: Callable[[], None] | None = None,
+        on_calibrating: Callable[[bool], None] | None = None,
     ) -> None:
         self.master = master
         self.config = config
+        # Called True/False around a calibration recording started from this
+        # window's Recalibrate button, so the engine can stand down. Optional
+        # for the same reason on_start_over is: this window is constructed
+        # directly in tests with no app behind it.
+        self._on_calibrating = on_calibrating
         # Optional so this window can still be constructed directly (as
         # tests do) without wiring up a real relaunch. If it is None the
         # button below does nothing rather than raising -- see _start_over().
@@ -436,5 +442,6 @@ class SettingsWindow:
             self.config,
             on_result=apply_result,
             success_suffix=" Press Save on the main window to keep it.",
+            on_recording=self._on_calibrating,
         )
         self._calibration.show(master=self.root)

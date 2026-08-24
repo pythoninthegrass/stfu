@@ -371,6 +371,8 @@ minimize-then-overlay against a fullscreen game · 4-click X randomization · Wi
 | Off-hours evaluated per frame, not by a timer | The machine sleeps; a timer set for a boundary during suspend never fires, and a fixed delay drifts an hour across DST |
 | Off-hours boundaries written to the event log | Otherwise the report shows a gap indistinguishable from a dead microphone or a lost log |
 | Times stored as 24-hour "HH:MM", displayed per preference | The stored value never depends on a display setting, so changing the format rewrites nothing |
+| Detection stands down for a calibration *recording*, not for the dialog being open | A dialog left on screen must never leave the app deaf; the recording is the only part that needs quiet |
+| Calibration suppression is a depth counter, not a flag | The Start button is not disabled during a run, so two recordings can genuinely be in flight; a flag would hand the microphone back while the second was still going |
 | An unparseable or zero-width window disables the schedule | `_coerce`'s rule: never leave detection switched off on a value nobody chose |
 
 ## 9. Explicitly out of scope
