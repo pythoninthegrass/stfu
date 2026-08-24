@@ -53,10 +53,15 @@ class CalibrationDialog:
         config: Config,
         on_result: Callable[[CalibrationResult], None] | None = None,
         success_suffix: str = "",
+        on_recording: Callable[[bool], None] | None = None,
     ) -> None:
         self.config = config
         self._on_result = on_result
         self._success_suffix = success_suffix
+        # Called True when a run starts recording and False when it stops, on
+        # the recording thread. app.py uses it to stand the engine down, so a
+        # yell produced on cue does not trip the ladder over this dialog.
+        self._on_recording = on_recording
         self._cancel = threading.Event()
         self._render_token = 0
 
@@ -149,6 +154,19 @@ class CalibrationDialog:
         dialog.protocol("WM_DELETE_WINDOW", stop_on_close)
 
         def run_calibration() -> None:
+            # Announce before opening the device, and release in a finally
+            # below, so every exit -- a microphone that will not open, a
+            # cancel, an unexpected exception -- hands detection back. Leaving
+            # it stood down would be the worst possible failure here.
+            if self._on_recording is not None:
+                self._on_recording(True)
+            try:
+                _run()
+            finally:
+                if self._on_recording is not None:
+                    self._on_recording(False)
+
+        def _run() -> None:
             source = MicSource(self.config.device_name, self.config.device_hostapi)
             if not source.open():
                 ui(

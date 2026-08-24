@@ -22,6 +22,12 @@ EVENT_TYPES = (
     # report can label the gap rather than showing missing data.
     "schedule_suspended",
     "schedule_resumed",
+    # A calibration run holds the microphone and asks for a deliberate yell,
+    # so detection stands down for its duration. Logged for the same reason
+    # the schedule boundaries are: otherwise the report shows a gap that
+    # reads exactly like a dropped microphone.
+    "calibration_started",
+    "calibration_finished",
 )
 
 

@@ -442,3 +442,116 @@ def test_an_unparseable_window_on_the_live_config_does_not_kill_the_frame(tmp_pa
 
     assert engine.scheduled_off is False
     assert actions.names() == [ACTION_OVERLAY]
+
+
+# --- standing down for a calibration run ---------------------------------
+#
+# Calibration asks the operator to yell on purpose. With detection live, that
+# yell trips the ladder and drops them to the desktop with an overlay drawn
+# over the dialog they are trying to use, so recalibrating a running app was
+# not possible at all.
+
+
+def test_a_yell_during_calibration_fires_nothing(parts):
+    engine, actions = parts
+    engine.begin_calibration()
+    yell(engine, 0.0, datetime(2026, 8, 20, 23, 0))
+    assert actions.names() == []
+    assert engine.calibrating is True
+
+
+def test_detection_returns_when_calibration_finishes(parts):
+    engine, actions = parts
+    engine.begin_calibration()
+    yell(engine, 0.0, datetime(2026, 8, 20, 23, 0))
+    assert actions.names() == []
+
+    engine.end_calibration()
+    assert engine.calibrating is False
+    yell(engine, 100.0, datetime(2026, 8, 20, 23, 5))
+    assert actions.names() == [ACTION_OVERLAY]
+
+
+def test_finishing_calibration_resets_the_detector(parts):
+    engine, _ = parts
+    calls = []
+    real_reset = engine.detector.reset
+
+    def spy():
+        calls.append(1)
+        real_reset()
+
+    engine.detector.reset = spy
+
+    engine.begin_calibration()
+    assert calls == []
+    engine.end_calibration()
+    # The rolling windows hold frames from before the run, and calibration has
+    # just moved the threshold out from under them.
+    assert calls == [1]
+
+
+def test_two_concurrent_runs_both_have_to_finish(parts):
+    """The dialog's Start button is not disabled while a run is going.
+
+    Two presses put two recordings in flight. With a flag rather than a
+    counter, the first to finish would hand the microphone back while the
+    second was still recording.
+    """
+    engine, actions = parts
+    engine.begin_calibration()
+    engine.begin_calibration()
+
+    engine.end_calibration()
+    assert engine.calibrating is True
+    yell(engine, 0.0, datetime(2026, 8, 20, 23, 0))
+    assert actions.names() == []
+
+    engine.end_calibration()
+    assert engine.calibrating is False
+    yell(engine, 100.0, datetime(2026, 8, 20, 23, 5))
+    assert actions.names() == [ACTION_OVERLAY]
+
+
+def test_ending_a_calibration_that_never_began_is_harmless(parts):
+    engine, actions = parts
+    engine.end_calibration()
+    assert engine.calibrating is False
+    yell(engine, 0.0, datetime(2026, 8, 20, 23, 0))
+    assert actions.names() == [ACTION_OVERLAY]
+
+
+def test_calibration_is_logged_once_per_run_not_per_nesting(parts):
+    engine, _ = parts
+    engine.begin_calibration()
+    engine.begin_calibration()
+    engine.end_calibration()
+    engine.end_calibration()
+    kinds = [e["type"] for e in engine.logstore.read_all()]
+    assert kinds == ["calibration_started", "calibration_finished"]
+
+
+def test_manual_pause_and_calibration_are_independent(parts):
+    engine, actions = parts
+    engine.pause()
+    engine.begin_calibration()
+
+    # Ending calibration must not undo a manual pause.
+    engine.end_calibration()
+    yell(engine, 0.0, datetime(2026, 8, 20, 23, 0))
+    assert actions.names() == []
+
+    engine.resume()
+    yell(engine, 100.0, datetime(2026, 8, 20, 23, 5))
+    assert actions.names() == [ACTION_OVERLAY]
+
+
+def test_calibration_gates_even_outside_the_off_hours_window(tmp_path):
+    """Calibration and the schedule are separate reasons to stand down."""
+    engine, actions = scheduled(tmp_path)
+    engine.begin_calibration()
+    # 23:00 is outside the 07:00-22:00 window, so only calibration is gating.
+    yell(engine, 0.0, datetime(2026, 8, 20, 23, 0))
+    assert actions.names() == []
+    assert engine.scheduled_off is False
+    assert engine.calibrating is True

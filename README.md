@@ -105,7 +105,11 @@ It asks everything it needs once, then never again:
 
 **The calibration step is the whole ballgame.** A yell's level depends on your mic, your room, and your voice — there is no sensible universal number. It measures the gap between your speaking voice and your yell and places the threshold 60% of the way up, biased toward the yell, because a false positive on normal conversation destroys trust in the app far faster than an occasional missed shout.
 
-You can re-run calibration any time from Settings.
+You can re-run calibration any time from Settings, or from the tray. Detection
+stands down while a calibration recording is running — otherwise the yell it
+asks for would trigger the app on top of the dialog — and comes back the moment
+the run ends, whether it finished, was cancelled, or the microphone refused to
+open.
 
 ---
 

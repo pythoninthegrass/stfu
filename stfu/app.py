@@ -675,7 +675,12 @@ class App:
         ReportWindow(self.root, self.logstore, self.config).show()
 
     def _open_settings(self) -> None:
-        SettingsWindow(self.root, self.config, on_start_over=self._start_over).show()
+        SettingsWindow(
+            self.root,
+            self.config,
+            on_start_over=self._start_over,
+            on_calibrating=self._calibration_recording,
+        ).show()
 
     def _open_meter(self) -> None:
         # Read-only diagnostics (F5): no PIN, and it reads self.meter rather
@@ -695,8 +700,25 @@ class App:
             save_config(self.config)
 
         CalibrationDialog(
-            self.config, on_result=apply_result, success_suffix=" Saved."
+            self.config,
+            on_result=apply_result,
+            success_suffix=" Saved.",
+            on_recording=self._calibration_recording,
         ).show(self.root)
+
+    def _calibration_recording(self, recording: bool) -> None:
+        """Stand the engine down while a calibration run records.
+
+        Called from the calibration thread, either by the tray's Recalibrate or
+        by the same button inside Settings. Without this, the yell the dialog
+        asks for trips the ladder and drops the operator to the desktop with an
+        overlay over the very dialog they are trying to use -- so recalibrating
+        a running app was not possible at all.
+        """
+        if recording:
+            self.engine.begin_calibration()
+        else:
+            self.engine.end_calibration()
 
     def _pause(self) -> None:
         self.engine.pause()
